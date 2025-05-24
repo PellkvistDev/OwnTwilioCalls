@@ -14,6 +14,7 @@ app.add_middleware(
 @app.api_route("/voice", methods=["GET", "POST"])
 async def voice(request: Request):
     """Respond with TwiML to start a bidirectional media stream."""
+    print("Call executed")
     response = VoiceResponse()
     connect = Connect()
     connect.stream(url="wss://your-render-url.onrender.com/media")
@@ -23,6 +24,7 @@ async def voice(request: Request):
 
 @app.websocket("/media")
 async def media_ws(websocket: WebSocket):
+    print("Websocket tries to connect")
     await websocket.accept()
     print("🔌 WebSocket connected.")
 
