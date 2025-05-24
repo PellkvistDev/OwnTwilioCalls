@@ -18,6 +18,7 @@ async def voice():
     connect = Connect()
     connect.stream(url="wss://your-render-url.onrender.com/media")
     response.append(connect)
+    response.say('The stream has started.')
     return Response(content=str(response), media_type="application/xml")
 
 @app.websocket("/media")
