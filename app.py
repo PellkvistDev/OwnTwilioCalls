@@ -1,11 +1,54 @@
-from twilio.twiml.voice_response import Connect, VoiceResponse, Say, Stream
+import base64
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
+from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 
-response = VoiceResponse()
-connect = Connect()
-connect.stream(url='wss://example.com/audiostream')
-response.append(connect)
-response.say(
-    'This TwiML instruction is unreachable unless the Stream is ended by your WebSocket server.'
+app = FastAPI()
+
+# Allow any CORS for testing
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-print(response)
+@app.get("/voice", response_class=Response)
+async def voice():
+    """Respond with TwiML to start a bidirectional media stream."""
+    response = VoiceResponse()
+    connect = Connect()
+    connect.stream(url="wss://your-render-url.onrender.com/media")
+    response.append(connect)
+    return Response(content=str(response), media_type="application/xml")
+
+@app.websocket("/media")
+async def media_ws(websocket: WebSocket):
+    await websocket.accept()
+    print("🔌 WebSocket connected.")
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            event = data.get("event")
+
+            if event == "start":
+                print("🚀 Call started.")
+            elif event == "media":
+                payload = data["media"]["payload"]
+
+                # Echo the audio back to Twilio
+                await websocket.send_json({
+                    "event": "media",
+                    "media": {
+                        "payload": payload
+                    }
+                })
+
+            elif event == "stop":
+                print("🛑 Call ended.")
+                break
+
+    except Exception as e:
+        print(f"⚠️ Error: {e}")
+    finally:
+        await websocket.close()
+        print("🔒 WebSocket closed.")
