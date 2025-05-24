@@ -11,8 +11,8 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-@app.get("/voice", response_class=Response)
-async def voice():
+@app.api_route("/voice", methods=["GET", "POST"])
+async def voice(request: Request):
     """Respond with TwiML to start a bidirectional media stream."""
     response = VoiceResponse()
     connect = Connect()
