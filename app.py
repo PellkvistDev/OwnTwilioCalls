@@ -37,7 +37,8 @@ def transcribe_pcm(pcm_audio_bytes):
         model="gpt-4o-transcribe", 
         file=audio_file, 
         response_format="text"
-)    return transcription.text
+    )        
+    return transcription.text
 
 @app.websocket("/media")
 async def media_ws(websocket: WebSocket):
