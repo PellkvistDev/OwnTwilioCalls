@@ -17,7 +17,7 @@ async def voice(request: Request):
     print("Call executed")
     response = VoiceResponse()
     connect = Connect()
-    connect.stream(url="wss://your-render-url.onrender.com/media")
+    connect.stream(url="wss://owntwiliocalls.onrender.com/media")
     response.append(connect)
     response.say('The stream has started.')
     return Response(content=str(response), media_type="application/xml")
