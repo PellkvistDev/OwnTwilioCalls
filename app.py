@@ -27,7 +27,7 @@ async def voice(request: Request):
     return Response(content=str(response), media_type="application/xml")
 
 # Get OpenAI API key from environment variable
-client = OpenAI()
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Eller ersätt med din nyckel direkt
 
 vad = webrtcvad.Vad(1)  # 0-3, 1 is low aggressiveness
 
