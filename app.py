@@ -24,6 +24,9 @@ async def voice(request: Request):
     connect = Connect()
     connect.stream(url="wss://owntwiliocalls.onrender.com/media")
     response.append(connect)
+    response.say(
+    'This TwiML instruction is unreachable unless the Stream is ended by your WebSocket server.'
+)
     return Response(content=str(response), media_type="application/xml")
 
 # Get OpenAI API key from environment variable
