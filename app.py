@@ -3,7 +3,7 @@ import base64
 import io
 import asyncio
 import webrtcvad
-import audioop
+import wave
 
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import Response
@@ -34,14 +34,23 @@ client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Eller ersätt med
 
 vad = webrtcvad.Vad(1)  # 0-3, 1 is low aggressiveness
 
+def pcm_to_wav_bytes(pcm_data: bytes, sample_rate=8000, sample_width=2, channels=1):
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data)
+    buffer.seek(0)
+    return buffer
+
 def transcribe_pcm(pcm_audio_bytes):
-    audio_file = io.BytesIO(pcm_audio_bytes)
+    wav_file = pcm_to_wav_bytes(pcm_audio_bytes)
     transcription = client.audio.transcriptions.create(
-        model="gpt-4o-transcribe", 
-        file=audio_file, 
-        response_format="text"
-    )        
-    return transcription.text
+        model="gpt-4o-transcribe",
+        file=audio_file,
+        response_format="text")
+    return transcript.text
 
 @app.websocket("/media")
 async def media_ws(websocket: WebSocket):
