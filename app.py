@@ -49,12 +49,17 @@ def pcm_to_wav_bytes(pcm_data: bytes, sample_rate=8000, sample_width=2, channels
 
 def transcribe_pcm(pcm_audio_bytes):
     wav_file = pcm_to_wav_bytes(pcm_audio_bytes)
-    transcript = client.audio.transcriptions.create(
-        model="whisper-1",
-        file=wav_file,
-        response_format="text"
-    )
+
+    # OpenAI API expects a named file-like object
+    with io.BytesIO(wav_file.read()) as f:
+        f.name = "audio.wav"  # Required: must have a .wav extension
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=f,
+            response_format="text"
+        )
     return transcript
+
 
 
 def mulaw_to_pcm16(mulaw_bytes):
