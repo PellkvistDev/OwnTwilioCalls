@@ -3,3 +3,4 @@ fastapi
 twilio
 webrtcvad
 openai
+wave
