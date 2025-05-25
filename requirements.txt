@@ -5,3 +5,4 @@ webrtcvad
 openai
 wave
 python-multipart
+numpy
