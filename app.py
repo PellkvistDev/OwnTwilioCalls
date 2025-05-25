@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import openai
+import numpy as np
 
 app = FastAPI()
 
@@ -25,14 +26,15 @@ async def voice(request: Request):
     connect.stream(url="wss://owntwiliocalls.onrender.com/media")
     response.append(connect)
     response.say(
-    'This TwiML instruction is unreachable unless the Stream is ended by your WebSocket server.'
-)
+        'This TwiML instruction is unreachable unless the Stream is ended by your WebSocket server.'
+    )
     return Response(content=str(response), media_type="application/xml")
 
-# Get OpenAI API key from environment variable
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Eller ersätt med din nyckel direkt
+# OpenAI client
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 vad = webrtcvad.Vad(1)  # 0-3, 1 is low aggressiveness
+
 
 def pcm_to_wav_bytes(pcm_data: bytes, sample_rate=8000, sample_width=2, channels=1):
     buffer = io.BytesIO()
@@ -44,13 +46,35 @@ def pcm_to_wav_bytes(pcm_data: bytes, sample_rate=8000, sample_width=2, channels
     buffer.seek(0)
     return buffer
 
+
 def transcribe_pcm(pcm_audio_bytes):
     wav_file = pcm_to_wav_bytes(pcm_audio_bytes)
-    transcription = client.audio.transcriptions.create(
+    transcript = client.audio.transcriptions.create(
         model="whisper-1",
-        file=audio_file,
-        response_format="text")
-    return transcript.text
+        file=wav_file,
+        response_format="text"
+    )
+    return transcript
+
+
+def mulaw_to_pcm16(mulaw_bytes):
+    # Mu-law to PCM16 conversion without audioop (manual table)
+    import soundfile as sf
+    import tempfile
+    import subprocess
+
+    # Temporary workaround using ffmpeg for conversion (you can replace this later)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".ulaw") as f:
+        f.write(mulaw_bytes)
+        f.flush()
+        out_wav = f.name.replace(".ulaw", ".wav")
+        subprocess.run([
+            "ffmpeg", "-y", "-f", "mulaw", "-ar", "8000", "-ac", "1", "-i", f.name, out_wav
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with open(out_wav, "rb") as out_f:
+            data = out_f.read()
+    return data
+
 
 @app.websocket("/media")
 async def media_ws(websocket: WebSocket):
@@ -76,14 +100,14 @@ async def media_ws(websocket: WebSocket):
                 payload = data["media"]["payload"]
                 mulaw_bytes = base64.b64decode(payload)
 
-                # Convert mulaw 8-bit to PCM16 LE 16-bit mono (required for VAD)
-                pcm16 = audioop.ulaw2lin(mulaw_bytes, 2)
+                # Convert to PCM16 for VAD
+                pcm16 = np.frombuffer(mulaw_bytes, dtype=np.uint8).astype(np.int16)
+                pcm_bytes = pcm16.tobytes()
 
-                # Run VAD on frame
-                is_speech = vad.is_speech(pcm16, sample_rate=8000)
+                is_speech = vad.is_speech(pcm_bytes, sample_rate=8000)
 
                 if is_speech:
-                    buffer.extend(pcm16)
+                    buffer.extend(pcm_bytes)
                     silence_frames = 0
                 else:
                     silence_frames += 1
@@ -95,7 +119,6 @@ async def media_ws(websocket: WebSocket):
                         buffer.clear()
                         silence_frames = 0
 
-                # Echo back audio (optional)
                 await websocket.send_json({
                     "event": "media",
                     "media": {
