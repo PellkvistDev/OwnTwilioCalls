@@ -47,7 +47,7 @@ def pcm_to_wav_bytes(pcm_data: bytes, sample_rate=8000, sample_width=2, channels
 def transcribe_pcm(pcm_audio_bytes):
     wav_file = pcm_to_wav_bytes(pcm_audio_bytes)
     transcription = client.audio.transcriptions.create(
-        model="gpt-4o-transcribe",
+        model="whisper-1",
         file=audio_file,
         response_format="text")
     return transcript.text
